@@ -8,10 +8,13 @@ from ftplib import FTP
 import sys
 import os.path
 import time
+from uploadtask.main import UploadFile
+import math
+import  FileUtils
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor #携程 线程池
 
-block_size = 2 * 1024 * 1024
+
 class MyFTP(FTP):
     '''''
     conncet to FTP Server
@@ -56,7 +59,7 @@ class MyFTP(FTP):
         fsize=ftp.size(remotefile)
 
         print('fsize  is ',fsize)
-        return
+        # return
 
         if fsize==0 :
             return
@@ -146,7 +149,7 @@ class MyFTP(FTP):
         while True:
           try:
             print(datetime.now(),localPath,'cmpsize',cmpsize)
-            if cmpsize>=block_size:
+            if cmpsize>=filesize:
                 print(datetime.now(),localPath,'data', "block_size end", not data)
                 break
             fsize=filesize - cmpsize
@@ -222,7 +225,39 @@ class MyFTP(FTP):
     def splitpath(self,remotepath):
         position=remotepath.rfind('/')
         return (remotepath[:position+1],remotepath[position+1:])
+    def downmultfile(self,remoteHost,remoteport,loginname,loginpassword,remotePath,localPath,filename,filesize,block_size ,del_part_file_able,mult_taskcount=None):
+        mult_file_name = FileUtils.GetFileName(localPath)
+        print(mult_file_name,)
+        FileUtils.Mkdirs(mult_file_name + "/")
 
+        part_file_count = math.ceil(float(filesize) / block_size)  # 分片文件数
+        part_file_end = part_file_count - 1
+        part_file_names = list()
+        if mult_taskcount == None:
+            mult_taskcount =  part_file_count
+        mult_threadPool = ThreadPoolExecutor(max_workers=mult_taskcount, thread_name_prefix="mult_ftp_down_task_")
+        for i in range(part_file_count):
+            part_file_name = mult_file_name + "/" + filename + "_part" + str(i)
+            part_file_names.append(part_file_name)
+            part_file_start_size = i * block_size
+            part_file_size = block_size
+
+            if i == part_file_end:
+                part_filesize = filesize - part_file_start_size
+
+            mult_threadPool.submit(MyFTP().downloadbymulti_thread, remoteHost, remoteport, loginname,
+                                   loginpassword, remotePath, part_file_name, part_file_start_size, part_file_size)
+
+        mult_threadPool.shutdown(wait=True)
+        print(datetime.now(), filename, "part文件全部下载完毕")
+        #
+        print(datetime.now(), filename, "开始合并")
+
+        FileUtils.MergFile(part_file_names, localPath, filesize, block_size, part_file_count, part_file_end,
+                           del_part_file_able, mult_file_name)  # del
+        #开始上传文件
+        print(datetime.now(), filename, "开始上传")
+        UploadFile(filename,filesize,localPath,localPath)
 
 if __name__=='__main__':
     # url = 'ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/supporting/GRCh38_positions/ALL.chr22_GRCh38_sites.20170504.vcf.gz'  # 2m
@@ -242,7 +277,7 @@ if __name__=='__main__':
     # lf.download(remoteHost=remoteHost, remoteport=21, loginname="anonymous", loginpassword='', remotePath=remotePath,localPath=localPath)
     # sys.exit(0)
     # 'ftp://download.big.ac.cn/Genome/Plants/Actinidia_chinensis/Kiwifruit_v1/Actinidia_chinensis.Protein.faa.gz'#
-    import  math
+
     # math.ceil()
 
     # filesie =float(cmpsize)
@@ -255,8 +290,7 @@ if __name__=='__main__':
     remotePath = 'Genome/Plants/Actinidia_chinensis/Kiwifruit_v1/Actinidia_chinensis.Protein.faa.gz'  # 5.8m  6031416
     localPath = 'target11.gz'
 
-
-
+    block_size= 1024**2
     taskcount = 5
     threadPool = ThreadPoolExecutor(max_workers=taskcount, thread_name_prefix="multi_task")
     mfilesize =3987616
@@ -349,5 +383,6 @@ if __name__=='__main__':
     # lf.download("192.168.100.237","21","cooler","123123","/tmp/cooler/boke.rar","./cooler/boke.rar")
     # lf.upload("192.168.100.237","21","cooler","123123","/tmp/cooler/boke1.rar","./cooler/boke.rar")
 # ————————————————
+
 # 版权声明：本文为CSDN博主「cooler00100」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
 # 原文链接：https://blog.csdn.net/cooler00100/java/article/details/84168240
