@@ -36,22 +36,27 @@ def UploadFile(filename,filesize,localPath,upload_path):
     # file_upload
     global  headers
     global  UserInfo
-    params= dict()
-    # put("user_id", USER_ID)
-    #put("file_size",destfile.length())
-    params["user_id"]=UserInfo["user_id"]
-    params["file_size"]=filesize
-    data_json= json.loads(params)
-    result = PostForNet(URL_FILE_UPLOADABLE,data_json,headers)
-    if not  result==None:
-        pass
+    # params= dict()
+    # # put("user_id", USER_ID)
+    # #put("file_size",destfile.length())
+    # params["user_id"]=UserInfo["user_id"]
+    # params["file_size"]=filesize
+    # data_json= json.dumps(params)
+    # print(datetime.now(),"开始请求文件是否可上传检查","")
+    # result = PostForNet(url=URL_FILE_UPLOADABLE,data_json=data_json,headers=headers)
+    # print(datetime.now(),"result is ",result)
+    # if   result==None:
+    #
+    #     pass
         #2. TODO 检查文夹夹是否存在 IPFS 是否启动
         # TODO GetFilePid()
             #3.ipfsPack
     #AESKEY
-    AesKey=GetForNet(URL_GET_AES_KEY,False)
+    AesKey=GetForNet(url=URL_GET_AES_KEY,retunjson=False)
+
     if  not AesKey ==None:
-        pass
+        print(datetime.now(),"AesKey",AesKey)
+        # pass
     # TODO 判断MD5 如果为空就进行md5加密
 
     #PACK
@@ -73,19 +78,19 @@ def UploadFile(filename,filesize,localPath,upload_path):
     params["MetaHash"] =AesKey[:32]
     print(datetime.now(),"MetaHash:",AesKey[:32])
     params["MetaSize"] = filesize
-    params["Gzip"] = filesize
-    params["Aes"] = filesize
-    params["AesKey"] = filesize
-    params["RS"] = filesize
-    params["Feed"] = filesize
-    params["AesKey"] = filesize
-    data_json=json.loads(params)
+    params["Gzip"] = False
+    params["Aes"] = True
+    params["AesKey"] = AesKey
+    params["RS"] = False
+    params["Feed"] = False
+    # data_json=json.dumps(params)
     file =  {'file': open(localPath, 'rb')}
     # from_data上传文件，注意参数名propertyMessageXml
     # data = (fields={'propertyMessageXml': ('filename', open('D:/123.xml', 'rb'), 'text/xml')})
 
-    data_json = json.loads(params)
-    PostForNet(URL_FILE_PACK,data_json=data_json,files=file)
+    data_json = json.dumps(params)
+    print(datetime.now(),filename ,"开始pack")
+    result=PostForNet(url=URL_FILE_PACK,data_json=data_json,files=file)
 
 
 
@@ -144,5 +149,9 @@ def  StartRefrenTokenTask():
 
 #运行方法
 if __name__ == '__main__':
-     aeskey =GetForNet(URL_GET_AES_KEY,False)
-     print(aeskey)
+    filename="Aspera_download_from_ftp.README"
+    filesize=861
+    localPath="../ftp-trace.ncbi.nlm.nih.gov/giab/ftp/Aspera_download_from_ftp.README"
+    upload_path=localPath
+    result=UploadFile(filename, filesize, localPath, upload_path)
+    print(result)

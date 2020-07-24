@@ -226,35 +226,44 @@ class MyFTP(FTP):
         position=remotepath.rfind('/')
         return (remotepath[:position+1],remotepath[position+1:])
     def downmultfile(self,remoteHost,remoteport,loginname,loginpassword,remotePath,localPath,filename,filesize,block_size ,del_part_file_able,mult_taskcount=None):
-        mult_file_name = FileUtils.GetFileName(localPath)
-        print(mult_file_name,)
-        FileUtils.Mkdirs(mult_file_name + "/")
+        # TODO 判断本地文件是否存在
+        if FileUtils.CheckFileExists(localPath):
+            lfilesize = FileUtils.GetFileSize(localPath)
+            print(datetime.now(), filename, "本地文件size", filesize)
+            if lfilesize == filesize:
+                print(datetime.now(), filename, "本地文件已存在")
+        else:
+            mult_file_name = FileUtils.GetFileName(localPath)
+            print(mult_file_name, )
+            FileUtils.Mkdirs(mult_file_name + "/")
 
-        part_file_count = math.ceil(float(filesize) / block_size)  # 分片文件数
-        part_file_end = part_file_count - 1
-        part_file_names = list()
-        if mult_taskcount == None:
-            mult_taskcount =  part_file_count
-        mult_threadPool = ThreadPoolExecutor(max_workers=mult_taskcount, thread_name_prefix="mult_ftp_down_task_")
-        for i in range(part_file_count):
-            part_file_name = mult_file_name + "/" + filename + "_part" + str(i)
-            part_file_names.append(part_file_name)
-            part_file_start_size = i * block_size
-            part_file_size = block_size
+            part_file_count = math.ceil(float(filesize) / block_size)  # 分片文件数
+            part_file_end = part_file_count - 1
+            part_file_names = list()
+            if mult_taskcount == None:
+                mult_taskcount = part_file_count
+            mult_threadPool = ThreadPoolExecutor(max_workers=mult_taskcount, thread_name_prefix="mult_ftp_down_task_")
+            for i in range(part_file_count):
+                part_file_name = mult_file_name + "/" + filename + "_part" + str(i)
+                part_file_names.append(part_file_name)
+                part_file_start_size = i * block_size
+                part_file_size = block_size
 
-            if i == part_file_end:
-                part_filesize = filesize - part_file_start_size
+                if i == part_file_end:
+                    part_filesize = filesize - part_file_start_size
 
-            mult_threadPool.submit(MyFTP().downloadbymulti_thread, remoteHost, remoteport, loginname,
-                                   loginpassword, remotePath, part_file_name, part_file_start_size, part_file_size)
+                mult_threadPool.submit(MyFTP().downloadbymulti_thread, remoteHost, remoteport, loginname,
+                                       loginpassword, remotePath, part_file_name, part_file_start_size, part_file_size)
 
-        mult_threadPool.shutdown(wait=True)
-        print(datetime.now(), filename, "part文件全部下载完毕")
-        #
-        print(datetime.now(), filename, "开始合并")
+            mult_threadPool.shutdown(wait=True)
+            print(datetime.now(), filename, "part文件全部下载完毕")
+            #
+            print(datetime.now(), filename, "开始合并")
 
-        FileUtils.MergFile(part_file_names, localPath, filesize, block_size, part_file_count, part_file_end,
-                           del_part_file_able, mult_file_name)  # del
+            FileUtils.MergFile(part_file_names, localPath, filesize, block_size, part_file_count, part_file_end,
+                               del_part_file_able, mult_file_name)  # del
+
+
         #开始上传文件
         print(datetime.now(), filename, "开始上传")
         UploadFile(filename,filesize,localPath,localPath)

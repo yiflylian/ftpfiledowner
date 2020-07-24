@@ -76,12 +76,13 @@ def GetForNet(url,retunjson=True,headers=headers):
 def PostForNet(url, data_json,headers=headers,files=None):
     requestloginfo(url,"POST",headers,data_json)
     try:
-       if not files:
-          with requests.post(url, data=data_json, headers=headers,files=files) as r:
-              return request_data_parse(r, url)
+       if  files:
+          with requests.post(url, json=data_json,files=files) as r:
+          # with requests.post(url, data=data_json, headers=headers,files=files) as r:
+              return request_data_parse(r=r,url= url)
        else:
-           with requests.post(url, data=data_json, headers=headers) as r:
-               return request_data_parse(r, url)
+           with requests.post(url, json=data_json, headers=headers) as r:
+               return request_data_parse(r=r,url=url)
 
     except Exception as e:
          HttpExceptionInfo(url, e)
